@@ -45,7 +45,7 @@ const MachinesMarketplace: React.FC = () => {
     manufacturingLocation: '',
     whatsappNumber: '',
     isUrgent: false,
-    videoFile: null as File | null,
+    videoFiles: [] as File[],
     materialSpecFile: null as File | null,
     productionImages: [] as File[],
     otherOptions: {
@@ -69,7 +69,7 @@ const MachinesMarketplace: React.FC = () => {
     whatsappNumber: '',
     notes: '',
     isUrgent: false,
-    videoFile: null as File | null,
+    videoFiles: [] as File[],
     productionImages: [] as File[],
   });
 
@@ -139,7 +139,7 @@ const MachinesMarketplace: React.FC = () => {
   const useRecordedVideo = () => {
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
     const file = new File([blob], `recorded-${Date.now()}.webm`, { type: 'video/webm' });
-    setSellForm(prev => ({ ...prev, videoFile: file }));
+    setSellForm(prev => ({ ...prev, videoFiles: [...prev.videoFiles, file] }));
     closeVideoModal();
   };
   useEffect(() => {
@@ -195,12 +195,14 @@ const MachinesMarketplace: React.FC = () => {
     setLoading(true);
     try {
       // Upload files
-      let videoUrl = '';
+      let videoUrls: string[] = [];
       let materialSpecUrl = '';
       let productionImageUrls: string[] = [];
 
-      if (sellForm.videoFile) {
-        videoUrl = await apiClient.uploadFileToStorage(sellForm.videoFile, 'machines/videos');
+      if (sellForm.videoFiles.length > 0) {
+        videoUrls = await Promise.all(
+          sellForm.videoFiles.map(file => apiClient.uploadFileToStorage(file, 'machines/videos'))
+        );
       }
       if (sellForm.materialSpecFile) {
         materialSpecUrl = await apiClient.uploadFileToStorage(sellForm.materialSpecFile, 'machines/specs');
@@ -224,7 +226,7 @@ const MachinesMarketplace: React.FC = () => {
         payoff_size: sellForm.payoffSize,
         main_motor_capacity: sellForm.mainMotorCapacity,
         line_speed_max_size: sellForm.lineSpeedMaxSize,
-        video_url: videoUrl,
+        video_urls: videoUrls,
         expected_daily_production: sellForm.expectedDailyProduction,
         manufacturing_location: sellForm.manufacturingLocation,
         material_specification_url: materialSpecUrl,
@@ -248,6 +250,21 @@ const MachinesMarketplace: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Upload files
+      let videoUrls: string[] = [];
+      let productionImageUrls: string[] = [];
+
+      if (buyForm.videoFiles.length > 0) {
+        videoUrls = await Promise.all(
+          buyForm.videoFiles.map(file => apiClient.uploadFileToStorage(file, 'machines/videos'))
+        );
+      }
+      if (buyForm.productionImages.length > 0) {
+        productionImageUrls = await Promise.all(
+          buyForm.productionImages.map(file => apiClient.uploadFileToStorage(file, 'machines/images'))
+        );
+      }
+
       // Get current user ID
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData?.user?.id) throw new Error('Could not get user ID');
@@ -264,6 +281,8 @@ const MachinesMarketplace: React.FC = () => {
         expected_daily_production: buyForm.expectedDailyProduction,
         manufacturing_location: buyForm.manufacturingLocation,
         notes: buyForm.notes,
+        video_urls: videoUrls,
+        production_image_urls: productionImageUrls,
         whatsapp_number: buyForm.whatsappNumber,
         is_urgent: buyForm.isUrgent
       });
@@ -290,7 +309,7 @@ const MachinesMarketplace: React.FC = () => {
       manufacturingLocation: '',
       whatsappNumber: '',
       isUrgent: false,
-      videoFile: null,
+      videoFiles: [],
       materialSpecFile: null,
       productionImages: [],
       otherOptions: { option1: '', option2: '', option3: '', option4: '' }
@@ -310,7 +329,7 @@ const MachinesMarketplace: React.FC = () => {
       whatsappNumber: '',
       notes: '',
       isUrgent: false,
-      videoFile: null,
+      videoFiles: [],
       productionImages: [],
     });
   };
@@ -339,14 +358,14 @@ const MachinesMarketplace: React.FC = () => {
   const handleFileChange = (field: string, files: FileList | null, formType?: 'sell' | 'buy') => {
     if (!files) return;
     if (formType === 'buy') {
-      if (field === 'videoFile') {
-        setBuyForm(prev => ({ ...prev, videoFile: files[0] }));
+      if (field === 'videoFiles') {
+        setBuyForm(prev => ({ ...prev, videoFiles: Array.from(files) }));
       } else if (field === 'productionImages') {
         setBuyForm(prev => ({ ...prev, productionImages: Array.from(files) }));
       }
     } else {
-      if (field === 'videoFile') {
-        setSellForm(prev => ({ ...prev, videoFile: files[0] }));
+      if (field === 'videoFiles') {
+        setSellForm(prev => ({ ...prev, videoFiles: Array.from(files) }));
       } else if (field === 'materialSpecFile') {
         setSellForm(prev => ({ ...prev, materialSpecFile: files[0] }));
       } else if (field === 'productionImages') {
@@ -459,8 +478,8 @@ const MachinesMarketplace: React.FC = () => {
                             
                             
                             const images = machine.production_image_urls || [];
-                            const video = machine.video_url || "";
-                            const hasMedia = images.length > 0 || video.length > 0;
+                            const videos = machine.video_urls || [];
+                            const hasMedia = images.length > 0 || videos.length > 0;
                             return (
                               <div key={machine.id} className="group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-gray-200 h-full bg-white rounded-lg overflow-hidden">
                                 {/* Product Image Section */}
@@ -477,17 +496,17 @@ const MachinesMarketplace: React.FC = () => {
                                             />
                                           </CarouselItem>
                                         ))}
-                                        {video && (
-                                          <CarouselItem key={video} className="flex items-center justify-center w-full h-full">
+                                        {videos.map((video: string, videoIdx: number) => (
+                                          <CarouselItem key={video + videoIdx} className="flex items-center justify-center w-full h-full">
                                             <video
                                               src={video}
                                               controls
                                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
                                             />
                                           </CarouselItem>
-                                        )}
+                                        ))}
                                       </CarouselContent>
-                                      {(images.length > 1 || video) && (
+                                      {(images.length > 1 || videos.length > 0) && (
                                         <>
                                           <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" />
                                           <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -590,8 +609,8 @@ const MachinesMarketplace: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                           {filteredBuyMachines.map((machine) => {
                             const images = machine.production_image_urls || [];
-                            const video = machine.video_url || "";
-                            const hasMedia = images.length > 0 || video.length > 0;
+                            const videos = machine.video_urls || [];
+                            const hasMedia = images.length > 0 || videos.length > 0;
                             return (
                               <div key={machine.id} className="group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-gray-200 h-full bg-white rounded-lg overflow-hidden">
                                 {/* Product Image Section */}
@@ -608,17 +627,17 @@ const MachinesMarketplace: React.FC = () => {
                                             />
                                           </CarouselItem>
                                         ))}
-                                        {video && (
-                                          <CarouselItem key={video} className="flex items-center justify-center w-full h-full">
+                                        {videos.map((video: string, videoIdx: number) => (
+                                          <CarouselItem key={video + videoIdx} className="flex items-center justify-center w-full h-full">
                                             <video
                                               src={video}
                                               controls
                                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
                                             />
                                           </CarouselItem>
-                                        )}
+                                        ))}
                                       </CarouselContent>
-                                      {(images.length > 1 || video) && (
+                                      {(images.length > 1 || videos.length > 0) && (
                                         <>
                                           <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" />
                                           <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -814,22 +833,26 @@ const MachinesMarketplace: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium mb-2">Machine Video</label>
+                          <label className="block text-sm font-medium mb-2">Machine Videos</label>
                           <CaptureOrUploadVideo
-                            label="Production Video"
-                            onVideoSelect={file => setSellForm(prev => ({ ...prev, videoFile: file }))}
+                            label="Production Videos"
+                            onVideoSelect={file => setSellForm(prev => ({ ...prev, videoFiles: [...prev.videoFiles, file] }))}
                           />
-                          {sellForm.videoFile && (
-                            <div className="mt-2 relative w-fit">
-                              <video src={URL.createObjectURL(sellForm.videoFile)} controls className="h-24 rounded border object-contain" />
-                              <button
-                                type="button"
-                                className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 z-10"
-                                onClick={() => setSellForm(prev => ({ ...prev, videoFile: null }))}
-                                aria-label="Remove video"
-                              >
-                                <X className="h-4 w-4 text-gray-700" />
-                              </button>
+                          {sellForm.videoFiles.length > 0 && (
+                            <div className="flex gap-2 flex-wrap mt-2">
+                              {sellForm.videoFiles.map((file, idx) => (
+                                <div key={idx} className="relative">
+                                  <video src={URL.createObjectURL(file)} controls className="h-24 rounded border object-contain" />
+                                  <button
+                                    type="button"
+                                    className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 z-10"
+                                    onClick={() => setSellForm(prev => ({ ...prev, videoFiles: prev.videoFiles.filter((_, i) => i !== idx) }))}
+                                    aria-label="Remove video"
+                                  >
+                                    <X className="h-4 w-4 text-gray-700" />
+                                  </button>
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
@@ -860,23 +883,43 @@ const MachinesMarketplace: React.FC = () => {
                            
                             {sellForm.productionImages.length > 0 && (
                               <div className="flex gap-2 flex-wrap mt-2">
-                                {sellForm.productionImages.map((file, idx) => (
-                                  <div key={idx} className="relative">
-                                    <img
-                                      src={URL.createObjectURL(file)}
-                                      alt={`Preview ${idx + 1}`}
-                                      className="h-24 rounded border object-contain"
-                                    />
-                                    <button
-                                      type="button"
-                                      className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 z-10"
-                                      onClick={() => setSellForm(prev => ({ ...prev, productionImages: prev.productionImages.filter((_, i) => i !== idx) }))}
-                                      aria-label="Remove image"
-                                    >
-                                      <X className="h-4 w-4 text-gray-700" />
-                                    </button>
-                                  </div>
-                                ))}
+                                {sellForm.productionImages.map((file, idx) => {
+                                  // Create object URL for each file
+                                  const imageUrl = URL.createObjectURL(file);
+                                  return (
+                                    <div key={`${file.name}-${idx}`} className="relative">
+                                      <img
+                                        src={imageUrl}
+                                        alt={`Preview ${idx + 1}`}
+                                        className="h-24 rounded border object-contain"
+                                        onLoad={() => {
+                                          // Clean up the object URL after the image loads to prevent memory leaks
+                                          // Note: We don't revoke immediately as the image might still need it
+                                        }}
+                                        onError={(e) => {
+                                          console.error('Image load error:', e);
+                                          // Try to reload the image with a fresh object URL
+                                          const target = e.target as HTMLImageElement;
+                                          if (target.src === imageUrl) {
+                                            target.src = URL.createObjectURL(file);
+                                          }
+                                        }}
+                                      />
+                                      <button
+                                        type="button"
+                                        className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 z-10"
+                                        onClick={() => {
+                                          // Revoke the object URL when removing
+                                          URL.revokeObjectURL(imageUrl);
+                                          setSellForm(prev => ({ ...prev, productionImages: prev.productionImages.filter((_, i) => i !== idx) }));
+                                        }}
+                                        aria-label="Remove image"
+                                      >
+                                        <X className="h-4 w-4 text-gray-700" />
+                                      </button>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -1007,40 +1050,71 @@ const MachinesMarketplace: React.FC = () => {
                           onImageSelect={file => setBuyForm(prev => ({ ...prev, productionImages: [...prev.productionImages, file] }))}
                         />
                         <div className="w-full">
-                          
                           {buyForm.productionImages.length > 0 && (
                             <div className="flex gap-2 flex-wrap mt-2">
-                              {buyForm.productionImages.map((file, idx) => (
+                              {buyForm.productionImages.map((file, idx) => {
+                                // Create object URL for each file
+                                const imageUrl = URL.createObjectURL(file);
+                                return (
+                                  <div key={`${file.name}-${idx}`} className="relative">
+                                    <img
+                                      src={imageUrl}
+                                      alt={`Preview ${idx + 1}`}
+                                      className="h-24 rounded border object-contain"
+                                      onLoad={() => {
+                                        // Clean up the object URL after the image loads to prevent memory leaks  
+                                        // Note: We don't revoke immediately as the image might still need it
+                                      }}
+                                      onError={(e) => {
+                                        console.error('Image load error:', e);
+                                        // Try to reload the image with a fresh object URL
+                                        const target = e.target as HTMLImageElement;
+                                        if (target.src === imageUrl) {
+                                          target.src = URL.createObjectURL(file);
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 z-10"
+                                      onClick={() => {
+                                        // Revoke the object URL when removing
+                                        URL.revokeObjectURL(imageUrl);
+                                        setBuyForm(prev => ({ ...prev, productionImages: prev.productionImages.filter((_, i) => i !== idx) }));
+                                      }}
+                                      aria-label="Remove image"
+                                    >
+                                      <X className="h-4 w-4 text-gray-700" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Production Videos</label>
+                        <CaptureOrUploadVideo
+                          label="Production Videos"
+                          onVideoSelect={file => setBuyForm(prev => ({ ...prev, videoFiles: [...prev.videoFiles, file] }))}
+                        />
+                        <div className="w-full">
+                          {buyForm.videoFiles.length > 0 && (
+                            <div className="flex gap-2 flex-wrap mt-2">
+                              {buyForm.videoFiles.map((file, idx) => (
                                 <div key={idx} className="relative">
-                                  <img
-                                    src={URL.createObjectURL(file)}
-                                    alt={`Preview ${idx + 1}`}
-                                    className="h-24 rounded border object-contain"
-                                  />
+                                  <video src={URL.createObjectURL(file)} controls className="h-24 rounded border object-contain" />
                                   <button
                                     type="button"
                                     className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 z-10"
-                                    onClick={() => setBuyForm(prev => ({ ...prev, productionImages: prev.productionImages.filter((_, i) => i !== idx) }))}
-                                    aria-label="Remove image"
+                                    onClick={() => setBuyForm(prev => ({ ...prev, videoFiles: prev.videoFiles.filter((_, i) => i !== idx) }))}
+                                    aria-label="Remove video"
                                   >
                                     <X className="h-4 w-4 text-gray-700" />
                                   </button>
                                 </div>
                               ))}
-                            </div>
-                          )}
-                          {buyForm.videoFile && (
-                            <div className="mt-2 relative w-fit">
-                              <span className="text-xs text-gray-500">{buyForm.videoFile.name}</span>
-                              <video src={URL.createObjectURL(buyForm.videoFile)} controls className="mt-2 h-24 rounded border object-contain" />
-                              <button
-                                type="button"
-                                className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 z-10"
-                                onClick={() => setBuyForm(prev => ({ ...prev, videoFile: null }))}
-                                aria-label="Remove video"
-                              >
-                                <X className="h-4 w-4 text-gray-700" />
-                              </button>
                             </div>
                           )}
                         </div>

@@ -36,6 +36,16 @@ const CaptureOrUploadImage: React.FC<CaptureOrUploadImageProps> = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
+      // Clear any camera-related state when files are selected
+      setCapturedImage(null);
+      setError(null);
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        setMediaStream(null);
+      }
+      setShowCamera(false);
+      setVideoReady(false);
+      
       Array.from(e.target.files).forEach(file => onImageSelect(file));
     }
   };
@@ -46,6 +56,12 @@ const CaptureOrUploadImage: React.FC<CaptureOrUploadImageProps> = ({
     setCapturedImage(null);
     setShowCamera(true);
     setVideoReady(false);
+    
+    // Clear the file input when opening camera to avoid conflicts
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: useMode } });
       setMediaStream(stream);
