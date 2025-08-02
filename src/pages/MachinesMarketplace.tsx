@@ -18,6 +18,63 @@ import { WhatsAppContact } from '@/components/ui/whatsapp-contact';
 import CaptureOrUploadImage from "@/components/CaptureOrUploadImage";
 import CaptureOrUploadVideo from "@/components/CaptureOrUploadVideo";
 
+// ImagePreview component to handle stable image previews
+const ImagePreview: React.FC<{
+  file: File;
+  onRemove: () => void;
+  alt: string;
+}> = ({ file, onRemove, alt }) => {
+  const [imageUrl, setImageUrl] = React.useState<string>('');
+  const [error, setError] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    // Create object URL when component mounts
+    const url = URL.createObjectURL(file);
+    setImageUrl(url);
+    
+    // Cleanup function to revoke URL when component unmounts
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
+
+  const handleRemove = () => {
+    // Revoke URL before removing
+    if (imageUrl) {
+      URL.revokeObjectURL(imageUrl);
+    }
+    onRemove();
+  };
+
+  const handleError = () => {
+    if (!error) {
+      setError(true);
+      // Try creating a new object URL
+      const newUrl = URL.createObjectURL(file);
+      setImageUrl(newUrl);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <img
+        src={imageUrl}
+        alt={alt}
+        className="h-24 rounded border object-contain"
+        onError={handleError}
+      />
+      <button
+        type="button"
+        className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 z-10"
+        onClick={handleRemove}
+        aria-label="Remove image"
+      >
+        <X className="h-4 w-4 text-gray-700" />
+      </button>
+    </div>
+  );
+};
+
 const MachinesMarketplace: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -69,7 +126,6 @@ const MachinesMarketplace: React.FC = () => {
     whatsappNumber: '',
     notes: '',
     isUrgent: false,
-    videoFiles: [] as File[],
     productionImages: [] as File[],
   });
 
@@ -254,11 +310,7 @@ const MachinesMarketplace: React.FC = () => {
       let videoUrls: string[] = [];
       let productionImageUrls: string[] = [];
 
-      if (buyForm.videoFiles.length > 0) {
-        videoUrls = await Promise.all(
-          buyForm.videoFiles.map(file => apiClient.uploadFileToStorage(file, 'machines/videos'))
-        );
-      }
+      
       if (buyForm.productionImages.length > 0) {
         productionImageUrls = await Promise.all(
           buyForm.productionImages.map(file => apiClient.uploadFileToStorage(file, 'machines/images'))
@@ -281,7 +333,6 @@ const MachinesMarketplace: React.FC = () => {
         expected_daily_production: buyForm.expectedDailyProduction,
         manufacturing_location: buyForm.manufacturingLocation,
         notes: buyForm.notes,
-        video_urls: videoUrls,
         production_image_urls: productionImageUrls,
         whatsapp_number: buyForm.whatsappNumber,
         is_urgent: buyForm.isUrgent
@@ -329,7 +380,6 @@ const MachinesMarketplace: React.FC = () => {
       whatsappNumber: '',
       notes: '',
       isUrgent: false,
-      videoFiles: [],
       productionImages: [],
     });
   };
@@ -884,40 +934,13 @@ const MachinesMarketplace: React.FC = () => {
                             {sellForm.productionImages.length > 0 && (
                               <div className="flex gap-2 flex-wrap mt-2">
                                 {sellForm.productionImages.map((file, idx) => {
-                                  // Create object URL for each file
-                                  const imageUrl = URL.createObjectURL(file);
                                   return (
-                                    <div key={`${file.name}-${idx}`} className="relative">
-                                      <img
-                                        src={imageUrl}
-                                        alt={`Preview ${idx + 1}`}
-                                        className="h-24 rounded border object-contain"
-                                        onLoad={() => {
-                                          // Clean up the object URL after the image loads to prevent memory leaks
-                                          // Note: We don't revoke immediately as the image might still need it
-                                        }}
-                                        onError={(e) => {
-                                          console.error('Image load error:', e);
-                                          // Try to reload the image with a fresh object URL
-                                          const target = e.target as HTMLImageElement;
-                                          if (target.src === imageUrl) {
-                                            target.src = URL.createObjectURL(file);
-                                          }
-                                        }}
-                                      />
-                                      <button
-                                        type="button"
-                                        className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 z-10"
-                                        onClick={() => {
-                                          // Revoke the object URL when removing
-                                          URL.revokeObjectURL(imageUrl);
-                                          setSellForm(prev => ({ ...prev, productionImages: prev.productionImages.filter((_, i) => i !== idx) }));
-                                        }}
-                                        aria-label="Remove image"
-                                      >
-                                        <X className="h-4 w-4 text-gray-700" />
-                                      </button>
-                                    </div>
+                                    <ImagePreview
+                                      key={`${file.name}-${file.lastModified}-${idx}`}
+                                      file={file}
+                                      onRemove={() => setSellForm(prev => ({ ...prev, productionImages: prev.productionImages.filter((_, i) => i !== idx) }))}
+                                      alt={`Preview ${idx + 1}`}
+                                    />
                                   );
                                 })}
                               </div>
@@ -1053,72 +1076,20 @@ const MachinesMarketplace: React.FC = () => {
                           {buyForm.productionImages.length > 0 && (
                             <div className="flex gap-2 flex-wrap mt-2">
                               {buyForm.productionImages.map((file, idx) => {
-                                // Create object URL for each file
-                                const imageUrl = URL.createObjectURL(file);
                                 return (
-                                  <div key={`${file.name}-${idx}`} className="relative">
-                                    <img
-                                      src={imageUrl}
-                                      alt={`Preview ${idx + 1}`}
-                                      className="h-24 rounded border object-contain"
-                                      onLoad={() => {
-                                        // Clean up the object URL after the image loads to prevent memory leaks  
-                                        // Note: We don't revoke immediately as the image might still need it
-                                      }}
-                                      onError={(e) => {
-                                        console.error('Image load error:', e);
-                                        // Try to reload the image with a fresh object URL
-                                        const target = e.target as HTMLImageElement;
-                                        if (target.src === imageUrl) {
-                                          target.src = URL.createObjectURL(file);
-                                        }
-                                      }}
-                                    />
-                                    <button
-                                      type="button"
-                                      className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 z-10"
-                                      onClick={() => {
-                                        // Revoke the object URL when removing
-                                        URL.revokeObjectURL(imageUrl);
-                                        setBuyForm(prev => ({ ...prev, productionImages: prev.productionImages.filter((_, i) => i !== idx) }));
-                                      }}
-                                      aria-label="Remove image"
-                                    >
-                                      <X className="h-4 w-4 text-gray-700" />
-                                    </button>
-                                  </div>
+                                  <ImagePreview
+                                    key={`${file.name}-${file.lastModified}-${idx}`}
+                                    file={file}
+                                    onRemove={() => setBuyForm(prev => ({ ...prev, productionImages: prev.productionImages.filter((_, i) => i !== idx) }))}
+                                    alt={`Preview ${idx + 1}`}
+                                  />
                                 );
                               })}
                             </div>
                           )}
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Production Videos</label>
-                        <CaptureOrUploadVideo
-                          label="Production Videos"
-                          onVideoSelect={file => setBuyForm(prev => ({ ...prev, videoFiles: [...prev.videoFiles, file] }))}
-                        />
-                        <div className="w-full">
-                          {buyForm.videoFiles.length > 0 && (
-                            <div className="flex gap-2 flex-wrap mt-2">
-                              {buyForm.videoFiles.map((file, idx) => (
-                                <div key={idx} className="relative">
-                                  <video src={URL.createObjectURL(file)} controls className="h-24 rounded border object-contain" />
-                                  <button
-                                    type="button"
-                                    className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 z-10"
-                                    onClick={() => setBuyForm(prev => ({ ...prev, videoFiles: prev.videoFiles.filter((_, i) => i !== idx) }))}
-                                    aria-label="Remove video"
-                                  >
-                                    <X className="h-4 w-4 text-gray-700" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      
                       <Button type="submit" className="w-full col-span-full" disabled={loading}>
                         {loading ? 'Submitting...' : 'Submit'}
                       </Button>

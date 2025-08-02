@@ -46,7 +46,19 @@ const CaptureOrUploadImage: React.FC<CaptureOrUploadImageProps> = ({
       setShowCamera(false);
       setVideoReady(false);
       
-      Array.from(e.target.files).forEach(file => onImageSelect(file));
+      // Convert FileList to Array and process files
+      const files = Array.from(e.target.files);
+      files.forEach(file => {
+        // Create a copy of the file to ensure it remains valid
+        const fileClone = new File([file], file.name, {
+          type: file.type,
+          lastModified: file.lastModified,
+        });
+        onImageSelect(fileClone);
+      });
+      
+      // Don't clear the input immediately to avoid issues
+      // The input will be cleared when camera is opened if needed
     }
   };
 

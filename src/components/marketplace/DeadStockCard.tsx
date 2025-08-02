@@ -155,7 +155,7 @@ const DeadStockCard: React.FC<DeadStockCardProps> = ({ item, onMediaClick }) => 
             ) : (
               <img
                 src={mainMediaUrl}
-                alt={item.stock_name}
+          alt={item.stock_name}
                 className="w-full h-full object-cover cursor-pointer"
                 onClick={() => onMediaClick(mainMediaUrl, mainMediaType)}
                 onError={(e) => {

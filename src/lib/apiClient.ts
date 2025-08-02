@@ -1830,7 +1830,7 @@ class ApiClient {
 
   async createSellMachine(machineData: any) {
     // Always include video_url, even if null
-    const { data, error } = await supabase.from('sell_machines').insert([{ ...machineData, video_url: machineData.video_url || null }]).select().single();
+    const { data, error } = await supabase.from('sell_machines').insert([machineData]).select().single();
     if (error) throw new Error(error.message);
     return data;
   }
