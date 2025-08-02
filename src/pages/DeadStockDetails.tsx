@@ -280,11 +280,19 @@ Posted: ${formatDate(stock.created_at)}
                                 <div className="aspect-video max-w-xs mx-auto bg-gray-100 rounded-lg overflow-hidden">
                                     {(() => {
                                         // Handle images and video for dead stock
+                                        const allMedia: string[] = [];
+                                        
+                                        // Add images first
                                         if (stock.image_urls && stock.image_urls.length > 0) {
-                                            const allMedia = [...stock.image_urls];
-                                            if (stock.video_urls && stock.video_urls.length > 0) {
-                                                allMedia.unshift(...stock.video_urls); // Add videos at the beginning
-                                            }
+                                            allMedia.push(...stock.image_urls);
+                                        }
+                                        
+                                        // Add videos
+                                        if (stock.video_urls && stock.video_urls.length > 0) {
+                                            allMedia.push(...stock.video_urls);
+                                        }
+                                        
+                                        if (allMedia.length > 0) {
 
                                             return (
                                                 <div className="relative w-full h-full">
@@ -293,12 +301,20 @@ Posted: ${formatDate(stock.created_at)}
                                                             {allMedia.map((mediaUrl, index) => (
                                                                 <CarouselItem key={index}>
                                                                     {stock.video_urls && stock.video_urls.includes(mediaUrl) ? (
-                                                                        <video
-                                                                            src={mediaUrl}
-                                                                            controls
-                                                                            className="w-full h-full aspect-video cursor-pointer"
-                                                                            onClick={() => setSelectedImage(mediaUrl)}
-                                                                        />
+                                                                        <div className="relative w-full h-full">
+                                                                            <video
+                                                                                src={mediaUrl}
+                                                                                controls
+                                                                                className="w-full h-full aspect-video cursor-pointer object-cover"
+                                                                                onClick={() => setSelectedImage(mediaUrl)}
+                                                                                preload="metadata"
+                                                                            />
+                                                                            {/* Video indicator badge */}
+                                                                            <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                                                                                <Video className="h-3 w-3" />
+                                                                                Video
+                                                                            </div>
+                                                                        </div>
                                                                     ) : (
                                                                         <img
                                                                             src={mediaUrl}
@@ -583,12 +599,19 @@ Posted: ${formatDate(stock.created_at)}
                 <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
                     <DialogContent className="max-w-4xl">
                         {selectedImage && (
-                            selectedImage.includes('.mp4') || selectedImage.includes('video') ? (
-                                <video
-                                    src={selectedImage}
-                                    controls
-                                    className="w-full h-auto rounded-lg"
-                                />
+                            stock.video_urls?.includes(selectedImage) ? (
+                                <div className="relative">
+                                    <video
+                                        src={selectedImage}
+                                        controls
+                                        className="w-full h-auto rounded-lg"
+                                        autoPlay
+                                    />
+                                    <div className="absolute top-4 left-4 bg-black/70 text-white text-sm px-3 py-1 rounded flex items-center gap-1">
+                                        <Video className="h-4 w-4" />
+                                        Video Preview
+                                    </div>
+                                </div>
                             ) : (
                                 <img
                                     src={selectedImage}

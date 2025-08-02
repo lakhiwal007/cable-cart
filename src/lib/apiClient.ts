@@ -1578,7 +1578,6 @@ class ApiClient {
       .insert([{ 
         ...data, 
         created_by: user.user.id,
-        video_url: data.video_url ?? null 
       }])
       .select()
       .single();
@@ -1596,7 +1595,6 @@ class ApiClient {
       .insert([{ 
         ...data, 
         created_by: user.user.id,
-        video_url: data.video_url ?? null 
       }])
       .select()
       .single();

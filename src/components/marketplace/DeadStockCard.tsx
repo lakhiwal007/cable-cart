@@ -1,10 +1,11 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, MapPin } from 'lucide-react';
+import { Eye, MapPin, Play } from 'lucide-react';
 import { WhatsAppContact } from '@/components/ui/whatsapp-contact';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
 
 interface DeadStockCardProps {
   item: any;
@@ -13,53 +14,178 @@ interface DeadStockCardProps {
 
 const DeadStockCard: React.FC<DeadStockCardProps> = ({ item, onMediaClick }) => {
   const navigate = useNavigate();
-  const mainImage = item.image_urls?.[0] || '/placeholder.svg';
-  const thumbnails = item.image_urls?.slice(1, 4) || [];
+  
+  // Main media (prioritize image, fallback to video, then placeholder)
+  const mainImage = item.image_urls?.[0];
+  const mainVideo = item.video_urls?.[0];
+  const hasMainImage = !!mainImage;
+  const mainMediaUrl = mainImage || mainVideo || '/placeholder.svg';
+  const mainMediaType = mainImage ? 'image' : (mainVideo ? 'video' : 'image');
+  
+  const imageThumbnails = item.image_urls?.slice(hasMainImage ? 1 : 0, 4) || [];
+  const videoThumbnails = item.video_urls?.slice(hasMainImage ? 0 : 1, 3) || [];
+  // Combine image and video thumbnails, limit to 3 total
+  const allThumbnails = [...imageThumbnails, ...videoThumbnails].slice(0, 3);
   const isAuthenticated = apiClient.isAuthenticated();
 
   return (
     <div className="group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-gray-200 h-full bg-white rounded-lg overflow-hidden">
-      {/* Product Image Section */}
+      {/* Product Media Section with Carousel */}
       <div className="relative overflow-hidden rounded-t-lg bg-gray-100 h-40 sm:h-32 lg:h-48">
-        <img
-          src={mainImage}
-          alt={item.stock_name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
-          onClick={() => onMediaClick(mainImage, 'image')}
-        />
+        {allThumbnails.length > 0 ? (
+          <Carousel className="w-full h-full" opts={{ loop: true }}>
+            <CarouselContent>
+              {/* Main media first */}
+              <CarouselItem>
+                {mainMediaType === 'video' && mainVideo ? (
+                  <div className="relative w-full h-full">
+                    <video
+                      src={mainMediaUrl}
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => onMediaClick(mainMediaUrl, 'video')}
+                      onError={(e) => {
+                        const img = document.createElement('img');
+                        img.src = '/placeholder.svg';
+                        img.className = 'w-full h-full object-cover cursor-pointer';
+                        img.alt = item.stock_name;
+                        e.currentTarget.parentNode?.replaceChild(img, e.currentTarget);
+                      }}
+                      muted
+                      preload="metadata"
+                    />
+                    {/* Video play icon overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+                      <div className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg">
+                        <Play className="h-5 w-5 text-gray-800 ml-0.5" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <img
+                    src={mainMediaUrl}
+                    alt={item.stock_name}
+                    className="w-full h-full object-cover cursor-pointer"
+                    onClick={() => onMediaClick(mainMediaUrl, mainMediaType)}
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholder.svg';
+                    }}
+                  />
+                )}
+              </CarouselItem>
+              
+              {/* Additional media */}
+              {allThumbnails.map((url: string, i: number) => {
+                const isVideo = videoThumbnails.includes(url);
+                return (
+                  <CarouselItem key={`thumb-${i}`}>
+                    {isVideo ? (
+                      <div className="relative w-full h-full">
+                        <video
+                          src={url}
+                          className="w-full h-full object-cover cursor-pointer"
+                          onClick={() => onMediaClick(url, 'video')}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                          muted
+                          preload="metadata"
+                        />
+                        {/* Video play icon overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+                          <div className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg">
+                            <Play className="h-5 w-5 text-gray-800 ml-0.5" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <img
+                        src={url}
+                        alt={`${item.stock_name} - ${i + 1}`}
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => onMediaClick(url, 'image')}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </CarouselItem>
+                );
+              })}
+            </CarouselContent>
+            
+            {/* Navigation arrows - only show if more than 1 media item */}
+            {(allThumbnails.length > 0) && (
+              <>
+                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-70 hover:opacity-100" />
+                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-70 hover:opacity-100" />
+              </>
+            )}
+            
+            {/* Media counter */}
+            <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+              {allThumbnails.length + 1} media
+            </div>
+          </Carousel>
+        ) : (
+          /* Fallback for no additional media */
+          <div className="relative w-full h-full">
+            {mainMediaType === 'video' && mainVideo ? (
+              <div className="relative w-full h-full">
+                <video
+                  src={mainMediaUrl}
+                  className="w-full h-full object-cover cursor-pointer"
+                  onClick={() => onMediaClick(mainMediaUrl, 'video')}
+                  onError={(e) => {
+                    const img = document.createElement('img');
+                    img.src = '/placeholder.svg';
+                    img.className = 'w-full h-full object-cover cursor-pointer';
+                    img.alt = item.stock_name;
+                    e.currentTarget.parentNode?.replaceChild(img, e.currentTarget);
+                  }}
+                  muted
+                  preload="metadata"
+                />
+                {/* Video play icon overlay */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+                  <div className="w-10 h-10 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg">
+                    <Play className="h-5 w-5 text-gray-800 ml-0.5" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <img
+                src={mainMediaUrl}
+                alt={item.stock_name}
+                className="w-full h-full object-cover cursor-pointer"
+                onClick={() => onMediaClick(mainMediaUrl, mainMediaType)}
+                onError={(e) => {
+                  e.currentTarget.src = '/placeholder.svg';
+                }}
+              />
+            )}
+          </div>
+        )}
+        
         {/* Badges Overlay */}
-        <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex items-center justify-between gap-1 sm:gap-2">
+        <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex items-center justify-between gap-1 sm:gap-2 z-10">
           {item.year_of_purchase && (
             <Badge className="bg-yellow-600 text-white shadow-lg text-xs px-2 py-1">
               Purchased {item.year_of_purchase}
             </Badge>
           )}
         </div>
+        
         {/* Quick Actions Overlay */}
-        <div className="absolute top-2 sm:top-3 right-2 sm:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <Button size="sm" variant="secondary" className="rounded-full shadow-lg h-8 w-8 sm:h-9 sm:w-9" onClick={() => onMediaClick(mainImage, 'image')}>
+        <div className="absolute top-2 sm:top-3 right-2 sm:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+          <Button size="sm" variant="secondary" className="rounded-full shadow-lg h-8 w-8 sm:h-9 sm:w-9" onClick={() => onMediaClick(mainMediaUrl, mainMediaType)}>
             <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
         </div>
       </div>
-      {/* Thumbnails */}
-      {thumbnails.length > 0 && (
-        <div className="flex gap-2 px-3 sm:px-4 py-2">
-          {thumbnails.map((url: string, i: number) => (
-            <img
-              key={i}
-              src={url}
-              alt="Thumb"
-              className="w-12 h-12 object-cover rounded border cursor-pointer hover:ring-2 hover:ring-blue-400"
-              onClick={() => onMediaClick(url, 'image')}
-            />
-          ))}
-        </div>
-      )}
       {/* Product Info Section */}
       <div className="p-3 sm:p-4">
         {/* Product Title */}
-        <h2 className="text-sm sm:text-md lg:text-lg font-semibold mb-2 line-clamp-2 group-hover:text-amber-600 transition-colors cursor-pointer" onClick={() => onMediaClick(mainImage, 'image')}>
+        <h2 className="text-sm sm:text-md lg:text-lg font-semibold mb-2 line-clamp-2 group-hover:text-amber-600 transition-colors cursor-pointer" onClick={() => onMediaClick(mainMediaUrl, mainMediaType)}>
           {item.stock_name}
         </h2>
         {/* Budget Range */}
