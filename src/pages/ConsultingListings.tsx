@@ -97,6 +97,7 @@ function ConsultantCard({ consultant }: { consultant: any }) {
         <div className="flex gap-2">
           <Button
             variant="outline"
+            onClick={() => navigate(`/consultant/${consultant.id}`)}
             className="w-full h-10 sm:h-9 text-sm"
           >
             <Eye className="h-4 w-4 mr-2" />
@@ -145,16 +146,7 @@ function ConsultingRequestCard({ request }: { request: any }) {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-blue-600 text-white';
-      case 'accepted': return 'bg-green-600 text-white';
-      case 'in_progress': return 'bg-yellow-600 text-white';
-      case 'completed': return 'bg-gray-600 text-white';
-      case 'cancelled': return 'bg-red-600 text-white';
-      default: return 'bg-gray-600 text-white';
-    }
-  };
+  
 
   return (
     <div className="group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-gray-200 h-full bg-white rounded-lg overflow-hidden">
@@ -169,16 +161,14 @@ function ConsultingRequestCard({ request }: { request: any }) {
             <Badge className={`text-xs ${getUrgencyColor(request.urgency)}`}>
               {request.urgency}
             </Badge>
-            <Badge className={`text-xs ${getStatusColor(request.status)}`}>
-              {request.status.replace('_', ' ')}
-            </Badge>
+           
           </div>
         </div>
         
         <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
           <div className="flex items-center gap-1">
             <Phone className="h-4 w-4" />
-            <span className="truncate">{request.whatsappNumber}</span>
+            <span className="truncate">{request.whatsapp_number}</span>
           </div>
         </div>
       </div>
@@ -211,6 +201,7 @@ function ConsultingRequestCard({ request }: { request: any }) {
         <div className="flex gap-2">
           <Button
             variant="outline"
+            onClick={() => navigate(`/consulting-request/${request.id}`)}
             className="w-full h-10 sm:h-9 text-sm"
           >
             <Eye className="h-4 w-4 mr-2" />
@@ -218,7 +209,7 @@ function ConsultingRequestCard({ request }: { request: any }) {
           </Button>
           {isAuthenticated ? (
             <WhatsAppContact
-              phoneNumber={request.whatsappNumber}
+              phoneNumber={request.whatsapp_number}
               consultantName="Requester"
               variant="default"
               size="default"
