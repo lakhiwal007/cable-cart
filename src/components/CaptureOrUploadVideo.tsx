@@ -284,8 +284,8 @@ const CaptureOrUploadVideo: React.FC<CaptureOrUploadVideoProps> = ({
                 </>
               ) : (
                 <>
-                  <div className="relative w-full mb-2">
-                    <video src={videoUrl} controls className="w-full rounded" />
+                  <div className="relative w-full mb-2 max-h-[300px]">
+                    <video src={videoUrl} controls className="w-full max-h-[300px] rounded" />
                   </div>
                   <div className="flex gap-2 w-full">
                     <Button

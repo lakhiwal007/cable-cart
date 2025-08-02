@@ -188,9 +188,7 @@ const UsedAndDeadStockListings: React.FC = () => {
                   <TabsContent value="used">
                     <div className="space-y-4">
                       <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Used Machines</h3>
-                      <div className="text-sm text-gray-500 mb-2">
-                        Debug: Found {used.length} used machines, filtered: {filteredUsedListings.length}
-                      </div>
+                      
                       {filteredUsedListings.length === 0 ? (
                         <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
                           {used.length === 0 ? 'No used machines available.' : 'No used machines found. Try adjusting your search or filters.'}

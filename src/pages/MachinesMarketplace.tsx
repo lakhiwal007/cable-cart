@@ -456,6 +456,8 @@ const MachinesMarketplace: React.FC = () => {
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                           {filteredSellMachines.map((machine) => {
+                            
+                            
                             const images = machine.production_image_urls || [];
                             const video = machine.video_url || "";
                             const hasMedia = images.length > 0 || video.length > 0;
