@@ -34,6 +34,8 @@ import Profile from "./pages/Profile";
 import CalculatorPage from "./pages/CalculatorPage";
 import ForgotPassword from "./pages/ForgotPassword";
 import LoginOtp from "./pages/LoginOtp";
+import ConsultantDetails from "./pages/ConsultantDetails";
+import ConsultingRequestDetails from "./pages/ConsultingRequestDetails";
 import { StatusBar, Style } from '@capacitor/status-bar';
 import useSafeAreaCssVars from './hooks/useSafeAreaCssVars';
 
@@ -111,6 +113,8 @@ const App = () => {
             <Route path="/machine/:machineType/:machineId" element={<MachineDetails />} />
             <Route path="/used-machine/:machineId" element={<UsedMachineDetails />} />
             <Route path="/dead-stock/:stockId" element={<DeadStockDetails />} />
+            <Route path="/consultant/:consultantId" element={<ConsultantDetails />} />
+            <Route path="/consulting-request/:requestId" element={<ConsultingRequestDetails />} />
             
             <Route path="/used-dead-stock-listings" element={<UsedAndDeadStockListings />} />
             <Route path="/machines-marketplace" element={<MachinesMarketplace />} />

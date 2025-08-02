@@ -1706,6 +1706,58 @@ class ApiClient {
     return data;
   }
 
+  async getConsultantById(id: string) {
+    const { data, error } = await supabase
+      .from('consultants')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw new Error(error.message);
+
+    // Fetch user information for the consultant
+    if (data && data.user_id) {
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id, name, email, user_type, phone')
+        .eq('id', data.user_id)
+        .single();
+
+      if (userError) {
+        console.error('Error fetching user:', userError);
+      } else {
+        data.user = user;
+      }
+    }
+
+    return data;
+  }
+
+  async getConsultingRequestById(id: string) {
+    const { data, error } = await supabase
+      .from('consulting_requests')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw new Error(error.message);
+
+    // Fetch user information for the request creator
+    if (data && data.user_id) {
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id, name, email, user_type, phone')
+        .eq('id', data.user_id)
+        .single();
+
+      if (userError) {
+        console.error('Error fetching user:', userError);
+      } else {
+        data.requester = user;
+      }
+    }
+
+    return data;
+  }
+
   async getMachineTypes() {
     const { data, error } = await supabase.from('machine_types').select('*').order('name');
     if (error) throw new Error(error.message);
